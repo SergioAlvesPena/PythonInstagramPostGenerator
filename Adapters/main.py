@@ -23,9 +23,9 @@ def openai_whisper_transcrever(caminho_audio, nome_arquivo, modelo_whisper, open
 def main():
     load_dotenv()
 
-    caminho_audio = "podcasts\podcast.mp3"
-    nome_arquivo = "podcast"
-    url_podcast = "https://www.youtube.com/watch?v=pKCE07D_WSQ"
+    caminho_audio = "podcasts\manualdomundo.mp3"
+    nome_arquivo = "manualdomundo"
+    url_podcast = "https://www.youtube.com/watch?v=g6mJPl-E_UY"
 
     api_openai = os.getenv("API_KEY_OPENAI")
 
