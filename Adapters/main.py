@@ -58,6 +58,54 @@ def openai_gpt_resumir_texto(transcricao_completa, nome_arquivo, openai):
 
     return resumo_instagram
 
+
+def ferramenta_ler_arquivo(nome_arquivo):
+    try:
+        with open(nome_arquivo, "rb") as arquivo:
+            return arquivo.read()
+    except IOError as e:
+        print(f"Erro no carregamento de arquivo: {e}")
+
+def openai_gpt_criar_hashtag(resumo_instagram, nome_arquivo, openai):
+    print("Gerando as hashtags com a open ai ... ")
+
+    prompt_sistema = """
+    Assuma que você é um digital influencer digital e que está construíndo conteúdos das áreas de tecnologia em uma plataforma de áudio (podcast).
+
+    Os textos produzidos devem levar em consideração uma peresona que consumirá os conteúdos gerados. Leve em consideração:
+
+    - Seus seguidores são pessoas super conectadas da área de tecnologia, que amam consumir conteúdos relacionados aos principais temas da área de computação.
+    - Você deve utilizar o gênero neutro na construção do seu texto
+    - Os textos serão utilizados para convidar pessoas do instagram para consumirem seu conteúdo de áudio
+    - O texto deve ser escrito em português do Brasil.
+    - A saída deve conter 5 hashtags.
+
+    """
+
+    prompt_usuario = f'Aqui está um resumo de um texto "{resumo_instagram}". Por favor, gere 5 hashtags que sejam relevantes para este texto e que possam ser publicadas no Instagram.  Por favor, faça isso em português do Brasil '
+
+    resposta = openai.ChatCompletion.create(
+        model = "gpt-3.5-turbo",
+        messages = [
+            {
+                "role" : "system",
+                "content": prompt_sistema
+            },
+            {
+                "role" : "user",
+                "content": prompt_usuario
+            }
+        ],
+        temperature = 0.6
+    )
+
+    hashtags = resposta["choices"][0]["message"]["content"]
+
+    with open(f"hashtag_{nome_arquivo}.txt", "+w", encoding='utf-8') as arquivo_texto:
+        arquivo_texto.write(hashtags)
+
+    return hashtags
+
 def main():
     load_dotenv()
 
@@ -71,9 +119,13 @@ def main():
 
     modelo_whisper = "whisper-1"
 
-    transcricao_completa = openai_whisper_transcrever(caminho_audio, nome_arquivo, modelo_whisper,openai)
-    resumo_instagram = openai_gpt_resumir_texto(transcricao_completa, nome_arquivo, openai)
+    #transcricao_completa = openai_whisper_transcrever(caminho_audio, nome_arquivo, modelo_whisper,openai)
+    #resumo_instagram = openai_gpt_resumir_texto(transcricao_completa, nome_arquivo, openai)
 
+    transcricao_completa = ferramenta_ler_arquivo(caminho_audio)
+    resumo_instagram = openai_gpt_resumir_texto(f"resumo_instagram_{nome_arquivo}.txt")
+
+    hashtags = openai_gpt_criar_hashtag(resumo_instagram, nome_arquivo, openai)
 
 if __name__ == "__main__":
     main()
