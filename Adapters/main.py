@@ -1,19 +1,30 @@
 import openai
 from dotenv import load_dotenv
 import os
+import requests
+from pydub import AudioSegment
 
-def openai_whisper_transcrever(caminho_audio, nome_arquivo, modelo_whisper, openai):
+def openai_whisper_transcrever_em_partes(caminho_audio, nome_arquivo, modelo_whisper, openai):
     print("Estou transcrevendo com whispers...")
 
-    audio = open(caminho_audio, "rb")
+    lista_arquivos_de_audio = ferramenta_transcrever_audio_em_partes(caminho_audio, nome_arquivo)
+    lista_pedacos_de_audio = []
 
-    resposta = openai.Audio.transcribe(
-        api_key = openai.api_key,
-        model = modelo_whisper,
-        file = audio
-    )
 
-    transcricao = resposta.text
+    for um_pedaco_audio in lista_arquivos_de_audio:
+
+        audio = open(um_pedaco_audio, "rb")
+
+        resposta = openai.Audio.transcribe(
+            api_key = openai.api_key,
+            model = modelo_whisper,
+            file = audio
+        )
+
+        transcricao = resposta.text
+        lista_pedacos_de_audio.append(transcricao)
+
+    transcricao = "".join(lista_pedacos_de_audio)
 
     with open(f"texto_completo_{nome_arquivo}.txt", "w", encoding= 'utf-8') as arquivo_texto:
         arquivo_texto.write(transcricao)
@@ -57,7 +68,6 @@ def openai_gpt_resumir_texto(transcricao_completa, nome_arquivo, openai):
         arquivo_texto.write(resumo_instagram)
 
     return resumo_instagram
-
 
 def ferramenta_ler_arquivo(nome_arquivo):
     try:
@@ -140,6 +150,53 @@ def openai_gpt_gerar_texto_imagem(resumo_instagram, nome_arquivo, openai):
 
     return texto_para_imagem
 
+def openai_dalle_gerar_imagem(resolucao, resumo_para_imagem, nome_arquivo, openai, qtd_imagens = 1):
+    print("Criando uma imagem utilizando a API do DALL-E...")
+
+    prompt_user = f"Uma pintura ultra futurista, textless, 3d que retrate {resumo_para_imagem}" 
+
+    resposta = openai.Image.create(
+        prompt = prompt_user,
+        n = qtd_imagens,
+        size = resolucao 
+    )
+
+    return resposta["data"]
+
+def ferramenta_download_imagem(nome_arquivo, imagem_gerada,qtd_imagens = 1):
+  lista_nome_imagens = []
+  try:
+    for contador_imagens in range(0,qtd_imagens):
+        caminho = imagem_gerada[contador_imagens].url
+        imagem = requests.get(caminho)
+
+        with open(f"{nome_arquivo}_{contador_imagens}.png", "wb") as arquivo_imagem:
+            arquivo_imagem.write(imagem.content)
+
+        lista_nome_imagens.append(f"{nome_arquivo}_{contador_imagens}.png")
+    return lista_nome_imagens
+  except:
+    print("Ocorreu um erro!")
+    return  None
+
+def ferramenta_transcrever_audio_em_partes(caminho_audio_podcast, nome_arquivo):
+    print("Iniciando corte .. ")
+    audio = AudioSegment.from_mp3(caminho_audio_podcast)
+
+    dez_minutos = 10 * 60 * 1000
+    
+    contador_pedaco = 1
+    arquivos_exportados = []
+
+    while len(audio) > 0:
+        pedaco = audio[:dez_minutos]
+        nome_pedaco_audio = f"{nome_arquivo}_parte_{contador_pedaco}.mp3"
+        pedaco.export(nome_pedaco_audio, format="mp3")
+        arquivos_exportados.append(nome_pedaco_audio)
+        audio = audio[dez_minutos:]
+        contador_pedaco += 1
+
+    return arquivos_exportados
 
 def main():
     load_dotenv()
@@ -147,6 +204,8 @@ def main():
     caminho_audio = "podcasts\manualdomundo.mp3"
     nome_arquivo = "manualdomundo"
     url_podcast = "https://www.youtube.com/watch?v=g6mJPl-E_UY"
+    resolucao = "1024x1024"
+    qtd_imagens = 4
 
     api_openai = os.getenv("API_KEY_OPENAI")
 
@@ -154,15 +213,19 @@ def main():
 
     modelo_whisper = "whisper-1"
 
-    #transcricao_completa = openai_whisper_transcrever(caminho_audio, nome_arquivo, modelo_whisper,openai)
+    #transcricao_completa = openai_whisper_transcrever_em_partes(caminho_audio, nome_arquivo, modelo_whisper,openai)
     #resumo_instagram = openai_gpt_resumir_texto(transcricao_completa, nome_arquivo, openai)
     #hashtags = openai_gpt_criar_hashtag(resumo_instagram, nome_arquivo, openai)
+    #resumo_imagem_instagram = openai_gpt_gerar_texto_imagem(resumo_instagram, nome_arquivo, openai )
 
     transcricao_completa = ferramenta_ler_arquivo(caminho_audio)
     resumo_instagram = ferramenta_ler_arquivo(f"resumo_instagram_{nome_arquivo}.txt")
     hashtags = ferramenta_ler_arquivo(f"hashtag_{nome_arquivo}.txt")
+    resumo_imagem_instagram = ferramenta_ler_arquivo(f"texto_para_geracao_imagem_{nome_arquivo}.txt")
 
-    resumo_imagem_instagram = openai_gpt_gerar_texto_imagem(resumo_instagram, nome_arquivo, openai )
+    imagem_gerada = openai_dalle_gerar_imagem(resolucao, resumo_imagem_instagram, nome_arquivo, openai, qtd_imagens)
+    ferramenta_download_imagem(nome_arquivo, imagem_gerada, qtd_imagens)
+
 
 if __name__ == "__main__":
     main()
