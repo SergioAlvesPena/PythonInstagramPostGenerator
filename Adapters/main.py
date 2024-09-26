@@ -219,6 +219,19 @@ def postar_instagram(caminho_imagem, texto, user, password):
 
     resposta = bot.upload_photo(caminho_imagem, caption=texto)
 
+def confirmacao_postagem(caminho_imagem_convertida, Legenda_postagem):
+    print("f\nCaminho Imagem: (caminho_imagem_convertida}") 
+    print(f"\Legenda: {Legenda_postagem}") 
+    
+    print("\n\nDeseja postar os dados acima no seu instagram? Digite 's' para sim e 'n' para não.")
+    return input()
+
+def ferramenta_convercao_binario_para_string(texto):
+    if isinstance(texto, bytes):
+        return str(texto.decode())
+    else:
+        return texto
+
 def main():
     load_dotenv()
 
@@ -247,18 +260,21 @@ def main():
     #resumo_imagem_instagram = ferramenta_ler_arquivo(f"texto_para_geracao_imagem_{nome_arquivo}.txt")
 
     imagem_gerada = openai_dalle_gerar_imagem(resolucao, resumo_imagem_instagram, nome_arquivo, openai, qtd_imagens)
+    
     lista_imagens_geradas = ferramenta_download_imagem(nome_arquivo, imagem_gerada, qtd_imagens)
 
     caminho_imagem_escolhida = selecionar_imagem(lista_imagens_geradas)
 
     caminho_imagem_convertida = ferramenta_converter_imagem_png_para_jpg(caminho_imagem_escolhida, nome_arquivo)
 
-    
+    legenda_imagem = f"{ferramenta_convercao_binario_para_string(resumo_instagram)} \n {ferramenta_convercao_binario_para_string(hashtags)} \n Link do Podcast {ferramenta_convercao_binario_para_string(url_podcast)}"
 
-    postar_instagram(caminho_imagem_convertida, 
-                    f"{resumo_instagram} \n {hashtags} \n Link do Podcast {url_podcast}",
-                    usuario_instagram,
-                    senha_instagram)
+    if confirmacao_postagem(caminho_imagem_convertida, legenda_imagem).lower() == "s":
+
+        postar_instagram(caminho_imagem_convertida, 
+                        legenda_imagem,
+                        usuario_instagram,
+                        senha_instagram)
 
 
 if __name__ == "__main__":
