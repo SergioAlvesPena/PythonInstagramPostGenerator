@@ -3,6 +3,9 @@ from dotenv import load_dotenv
 import os
 import requests
 from pydub import AudioSegment
+from PIL import Image
+from instabot import Bot
+import shutil
 
 def openai_whisper_transcrever_em_partes(caminho_audio, nome_arquivo, modelo_whisper, openai):
     print("Estou transcrevendo com whispers...")
@@ -198,6 +201,24 @@ def ferramenta_transcrever_audio_em_partes(caminho_audio_podcast, nome_arquivo):
 
     return arquivos_exportados
 
+def selecionar_imagem (lista_nome_imagens):
+    return lista_nome_imagens[int(input("Qual imagem você deseja selecionar, informe o numero do sufixo da imagem gerada? "))]
+
+def ferramenta_converter_imagem_png_para_jpg(caminho_imagem_escolhida, nome_arquivo):
+    img_png = Image.open(caminho_imagem_escolhida)
+    img_png.save(caminho_imagem_escolhida.split(".")[0] + ".jpg")
+
+    return caminho_imagem_escolhida.split(".")[0] + ".jpg"
+
+def postar_instagram(caminho_imagem, texto, user, password):
+    if os.path.exists("config"):
+        shutil.rmtree("config")
+    bot = Bot()
+    
+    bot.login(username=user, password=password)
+
+    resposta = bot.upload_photo(caminho_imagem, caption=texto)
+
 def main():
     load_dotenv()
 
@@ -206,6 +227,8 @@ def main():
     url_podcast = "https://www.youtube.com/watch?v=g6mJPl-E_UY"
     resolucao = "1024x1024"
     qtd_imagens = 4
+    usuario_instagram = os.getenv("USER_INSTAGRAM")
+    senha_instagram = os.getenv("PASSWORD_INSTAGRAM")
 
     api_openai = os.getenv("API_KEY_OPENAI")
 
@@ -213,18 +236,29 @@ def main():
 
     modelo_whisper = "whisper-1"
 
-    #transcricao_completa = openai_whisper_transcrever_em_partes(caminho_audio, nome_arquivo, modelo_whisper,openai)
-    #resumo_instagram = openai_gpt_resumir_texto(transcricao_completa, nome_arquivo, openai)
-    #hashtags = openai_gpt_criar_hashtag(resumo_instagram, nome_arquivo, openai)
-    #resumo_imagem_instagram = openai_gpt_gerar_texto_imagem(resumo_instagram, nome_arquivo, openai )
+    transcricao_completa = openai_whisper_transcrever_em_partes(caminho_audio, nome_arquivo, modelo_whisper,openai)
+    resumo_instagram = openai_gpt_resumir_texto(transcricao_completa, nome_arquivo, openai)
+    hashtags = openai_gpt_criar_hashtag(resumo_instagram, nome_arquivo, openai)
+    resumo_imagem_instagram = openai_gpt_gerar_texto_imagem(resumo_instagram, nome_arquivo, openai )
 
-    transcricao_completa = ferramenta_ler_arquivo(caminho_audio)
-    resumo_instagram = ferramenta_ler_arquivo(f"resumo_instagram_{nome_arquivo}.txt")
-    hashtags = ferramenta_ler_arquivo(f"hashtag_{nome_arquivo}.txt")
-    resumo_imagem_instagram = ferramenta_ler_arquivo(f"texto_para_geracao_imagem_{nome_arquivo}.txt")
+    #transcricao_completa = ferramenta_ler_arquivo(caminho_audio)
+    #resumo_instagram = ferramenta_ler_arquivo(f"resumo_instagram_{nome_arquivo}.txt")
+    #hashtags = ferramenta_ler_arquivo(f"hashtag_{nome_arquivo}.txt")
+    #resumo_imagem_instagram = ferramenta_ler_arquivo(f"texto_para_geracao_imagem_{nome_arquivo}.txt")
 
     imagem_gerada = openai_dalle_gerar_imagem(resolucao, resumo_imagem_instagram, nome_arquivo, openai, qtd_imagens)
-    ferramenta_download_imagem(nome_arquivo, imagem_gerada, qtd_imagens)
+    lista_imagens_geradas = ferramenta_download_imagem(nome_arquivo, imagem_gerada, qtd_imagens)
+
+    caminho_imagem_escolhida = selecionar_imagem(lista_imagens_geradas)
+
+    caminho_imagem_convertida = ferramenta_converter_imagem_png_para_jpg(caminho_imagem_escolhida, nome_arquivo)
+
+    
+
+    postar_instagram(caminho_imagem_convertida, 
+                    f"{resumo_instagram} \n {hashtags} \n Link do Podcast {url_podcast}",
+                    usuario_instagram,
+                    senha_instagram)
 
 
 if __name__ == "__main__":
